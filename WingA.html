@@ -7,8 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .done { background: #64748b !important; color: white !important; font-weight: bold; }
-        .calendar-box { min-height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; font-size: 0.875rem; }
-        .today-mark { border: 2px solid #64748b; color: #64748b; font-weight: bold; }
+        .calendar-box { min-height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+        .calendar-box:hover { background: #e2e8f0; }
+        .selected-date { border: 2px solid #64748b; background: #f1f5f9; }
+        .today-mark { color: #64748b; font-weight: 900; text-decoration: underline; }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
@@ -18,46 +20,133 @@
             <a href="WingA.html" class="px-4 py-2 bg-white shadow-sm rounded-lg text-slate-600">WingA</a>
             <a href="WingC.html" class="px-4 py-2 text-gray-400">WingC</a>
         </nav>
-        <h2 id="monthDisplay" class="text-center text-lg font-black text-slate-700 mb-6">讀取中...</h2>
-        <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-400 mb-4">
+
+        <div class="flex justify-between items-center mb-6 px-2">
+            <button onclick="changeMonth(-1)" class="text-slate-400 p-2">❮</button>
+            <h2 id="monthDisplay" class="text-lg font-black text-slate-700"></h2>
+            <button onclick="changeMonth(1)" class="text-slate-400 p-2">❯</button>
+        </div>
+
+        <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-400 mb-2">
             <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
         </div>
-        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-8"></div>
-        <button id="btn" onclick="checkIn()" class="w-full py-4 bg-slate-600 hover:bg-slate-700 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-95">
-            確認今日打卡
-        </button>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-6"></div>
+
+        <div class="bg-slate-50 p-4 rounded-2xl mb-6">
+            <p class="text-xs font-bold text-slate-400 mb-3">打卡詳情 (選取日期：<span id="selectedDateText">今日</span>)</p>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <select id="duration" class="p-2 rounded-lg border text-sm">
+                    <option value="10">10 分鐘</option>
+                    <option value="15">15 分鐘</option>
+                    <option value="20" selected>20 分鐘</option>
+                    <option value="25">25 分鐘</option>
+                    <option value="30">30 分鐘</option>
+                    <option value="custom">自訂</option>
+                </select>
+                <select id="type" class="p-2 rounded-lg border text-sm">
+                    <option value="快行">快行</option>
+                    <option value="慢行">慢行</option>
+                    <option value="跑步">跑步</option>
+                    <option value="自訂">自訂</option>
+                </select>
+            </div>
+            <button id="btn" onclick="checkIn()" class="w-full py-3 bg-slate-600 text-white font-bold rounded-xl shadow-lg active:scale-95">確認打卡</button>
+        </div>
+
+        <div class="border-t pt-4">
+            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest">歷史紀錄</p>
+            <div id="historyList" class="space-y-2 max-h-40 overflow-y-auto pr-2 text-sm"></div>
+        </div>
     </div>
+
     <script>
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1QmZXmllQO-JuCs5XWYOn3PIOiNy-mDtsO9Y5cJwyG7f2fnW0QiTnXp_TG14eez0Z/exec';
+        let currentViewDate = new Date();
+        let selectedDate = null;
+        let allData = [];
+
         async function init() {
-            try {
-                const res = await fetch(GAS_URL);
-                const data = await res.json();
-                renderCalendar(data.WingA || []);
-            } catch (e) { document.getElementById('monthDisplay').innerText = "載入失敗"; }
+            const res = await fetch(GAS_URL);
+            const data = await res.json();
+            allData = data.WingA || [];
+            render();
         }
-        function renderCalendar(doneDates) {
+
+        function render() {
             const grid = document.getElementById('calendarGrid');
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            const todayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth();
+            const todayStr = new Date().toISOString().split('T')[0];
+            
             document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
             grid.innerHTML = '';
+
             for (let i = 0; i < new Date(year, month, 1).getDay(); i++) grid.innerHTML += `<div></div>`;
-            for (let d = 1; d <= new Date(year, month + 1, 0).getDate(); d++) {
+
+            const doneDates = allData.map(item => item.date);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const isDone = doneDates.includes(dateStr);
-                const classes = isDone ? 'done' : (dateStr === todayStr ? 'today-mark' : 'bg-gray-50 text-gray-400');
-                grid.innerHTML += `<div class="calendar-box ${classes}">${d}</div>`;
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                
+                let classes = isDone ? 'done' : 'bg-gray-50 text-gray-400';
+                if (isToday) classes += ' today-mark';
+                if (isSelected) classes += ' selected-date';
+
+                grid.innerHTML += `<div class="calendar-box ${classes}" onclick="selectDate('${dateStr}')">${d}</div>`;
             }
+            renderHistory();
         }
+
+        function selectDate(dateStr) {
+            selectedDate = dateStr;
+            document.getElementById('selectedDateText').innerText = dateStr;
+            render();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            const sortedData = [...allData].reverse();
+            list.innerHTML = sortedData.length ? sortedData.map(item => `
+                <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border-l-4 border-slate-400">
+                    <div>
+                        <span class="font-bold">${item.date}</span>
+                        <span class="text-xs text-gray-500 ml-2">${item.type}</span>
+                    </div>
+                    <span class="text-xs font-black text-slate-600">${item.duration}m</span>
+                </div>
+            `).join('') : '<p class="text-gray-300 text-center py-4">尚無紀錄</p>';
+        }
+
+        function changeMonth(step) {
+            currentViewDate.setMonth(currentViewDate.getMonth() + step);
+            render();
+        }
+
         async function checkIn() {
+            const duration = document.getElementById('duration').value === 'custom' ? prompt("請輸入分鐘：") : document.getElementById('duration').value;
+            const type = document.getElementById('type').value === '自訂' ? prompt("請輸入項目：") : document.getElementById('type').value;
+            
+            if(!duration || !type) return;
+
             document.getElementById('btn').disabled = true;
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({sheetName: 'WingA'}), mode: 'no-cors'});
-            alert('打卡成功！');
+            await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    sheetName: 'WingA',
+                    customDate: selectedDate, // 如果沒選就是 null，GAS 會自動抓當天
+                    duration: duration,
+                    type: type
+                }),
+                mode: 'no-cors'
+            });
+            alert('紀錄成功！');
             location.reload();
         }
+
         init();
     </script>
 </body>
