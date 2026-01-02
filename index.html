@@ -7,11 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin: 1px; }
-        .bg-winga { background-color: #64748b; } /* 灰色 */
-        .bg-wingc { background-color: #60A5FA; } /* 藍色 */
+        .bg-winga { background-color: #64748b; } 
+        .bg-wingc { background-color: #60A5FA; } 
         .calendar-day-box { min-height: 55px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; border: 1px solid #f1f5f9; }
         .today-mark { border: 2px solid #e2e8f0; background: white; }
         .today-text { font-weight: 900; color: #1e293b; text-decoration: underline; }
+        /* 進度條動畫 */
+        .bar-transition { transition: width 1s ease-in-out; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4 flex flex-col items-center">
@@ -32,11 +34,30 @@
             <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
         </div>
 
-        <div id="calendarGrid" class="grid grid-cols-7 gap-2"></div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-8"></div>
 
-        <div class="mt-8 flex justify-center gap-6 text-[11px] font-bold text-slate-400 border-t border-slate-50 pt-6">
-            <span class="flex items-center gap-2"><i class="dot bg-winga"></i> WingA</span>
-            <span class="flex items-center gap-2"><i class="dot bg-wingc"></i> WingC</span>
+        <div class="border-t border-slate-50 pt-6 space-y-5">
+            <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Monthly Total (Minutes)</p>
+            
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs font-bold text-slate-500 px-1">
+                    <span>WingA</span>
+                    <span id="statA">0 min</span>
+                </div>
+                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+                    <div id="barA" class="bg-winga h-full bar-transition" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <div class="flex justify-between text-xs font-bold text-blue-500 px-1">
+                    <span>WingC</span>
+                    <span id="statC">0 min</span>
+                </div>
+                <div class="w-full bg-blue-50 h-3 rounded-full overflow-hidden">
+                    <div id="barC" class="bg-wingc h-full bar-transition" style="width: 0%"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -48,8 +69,7 @@
         async function init() {
             try {
                 const res = await fetch(GAS_URL);
-                const data = await res.json();
-                allData = data;
+                allData = await res.json();
                 render();
             } catch (e) { 
                 document.getElementById('monthDisplay').innerText = "載入失敗"; 
@@ -60,7 +80,8 @@
             const grid = document.getElementById('calendarGrid');
             const year = currentViewDate.getFullYear();
             const month = currentViewDate.getMonth();
-            const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+            const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`; // 用於過濾月份
+            const todayStr = new Date().toLocaleDateString('en-CA');
             
             document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
             grid.innerHTML = '';
@@ -68,19 +89,14 @@
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            // 填充月初空白
-            for (let i = 0; i < firstDay; i++) {
-                grid.innerHTML += `<div></div>`;
-            }
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
 
-            // 取得 A 和 C 的打卡日期清單
             const aDates = allData.WingA ? allData.WingA.map(item => item.date) : [];
             const cDates = allData.WingC ? allData.WingC.map(item => item.date) : [];
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const isToday = dateStr === todayStr;
-                
                 let dots = '';
                 if (aDates.includes(dateStr)) dots += `<i class="dot bg-winga"></i>`;
                 if (cDates.includes(dateStr)) dots += `<i class="dot bg-wingc"></i>`;
@@ -88,11 +104,35 @@
                 grid.innerHTML += `
                     <div class="calendar-day-box ${isToday ? 'today-mark' : ''}">
                         <span class="text-[10px] mb-1 ${isToday ? 'today-text' : 'font-bold text-slate-300'}">${d}</span>
-                        <div class="flex h-2 items-center justify-center gap-0.5">
-                            ${dots}
-                        </div>
+                        <div class="flex h-2 items-center justify-center gap-0.5">${dots}</div>
                     </div>`;
             }
+
+            // --- 更新統計 Bar 邏輯 ---
+            updateStats(monthStr);
+        }
+
+        function updateStats(monthStr) {
+            // 過濾出本月資料並加總時長
+            const totalA = allData.WingA
+                .filter(item => item.date.startsWith(monthStr))
+                .reduce((sum, item) => sum + parseInt(item.duration || 0), 0);
+            
+            const totalC = allData.WingC
+                .filter(item => item.date.startsWith(monthStr))
+                .reduce((sum, item) => sum + parseInt(item.duration || 0), 0);
+
+            // 更新文字
+            document.getElementById('statA').innerText = `${totalA} min`;
+            document.getElementById('statC').innerText = `${totalC} min`;
+
+            // 更新 Bar 長度 (假設每月目標為 600 分鐘，可自行調整比例)
+            const goal = 600; 
+            const percentA = Math.min((totalA / goal) * 100, 100);
+            const percentC = Math.min((totalC / goal) * 100, 100);
+
+            document.getElementById('barA').style.width = percentA + '%';
+            document.getElementById('barC').style.width = percentC + '%';
         }
 
         function changeMonth(step) {
