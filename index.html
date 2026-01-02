@@ -9,28 +9,32 @@
         .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin: 1px; }
         .bg-winga { background-color: #64748b; } /* 灰色 */
         .bg-wingc { background-color: #60A5FA; } /* 藍色 */
+        .calendar-day-box { min-height: 55px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; border: 1px solid #f1f5f9; }
+        .today-mark { border: 2px solid #e2e8f0; background: white; }
+        .today-text { font-weight: 900; color: #1e293b; text-decoration: underline; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4 flex flex-col items-center">
     <div class="bg-white shadow-xl rounded-[2.5rem] p-6 w-full max-w-md">
         <nav class="flex justify-around mb-8 p-1.5 bg-gray-100 rounded-2xl text-sm font-bold">
             <a href="index.html" class="px-4 py-2 bg-white shadow-sm rounded-xl text-slate-800">All</a>
-            <a href="WingA.html" class="px-4 py-2 text-gray-400">WingA</a>
-            <a href="WingC.html" class="px-4 py-2 text-gray-400">WingC</a>
+            <a href="WingA.html" class="px-4 py-2 text-gray-400 hover:text-slate-600 transition-all">WingA</a>
+            <a href="WingC.html" class="px-4 py-2 text-gray-400 hover:text-slate-600 transition-all">WingC</a>
         </nav>
 
         <div class="flex justify-between items-center mb-6 px-4">
-            <button onclick="changeMonth(-1)" class="text-gray-300 hover:text-gray-600 text-xl">❮</button>
-            <h2 id="monthDisplay" class="text-xl font-black text-gray-800"></h2>
-            <button onclick="changeMonth(1)" class="text-gray-300 hover:text-gray-600 text-xl">❯</button>
+            <button onclick="changeMonth(-1)" class="text-gray-300 hover:text-slate-500 text-2xl transition-all">❮</button>
+            <h2 id="monthDisplay" class="text-xl font-black text-slate-800 tracking-tight"></h2>
+            <button onclick="changeMonth(1)" class="text-gray-300 hover:text-slate-500 text-2xl transition-all">❯</button>
         </div>
 
-        <div class="grid grid-cols-7 gap-2 text-center text-xs font-black text-gray-300 mb-2">
+        <div class="grid grid-cols-7 gap-2 text-center text-[10px] font-black text-slate-300 mb-2 tracking-widest">
             <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
         </div>
+
         <div id="calendarGrid" class="grid grid-cols-7 gap-2"></div>
 
-        <div class="mt-8 flex justify-center gap-6 text-xs font-bold text-gray-400 border-t pt-6">
+        <div class="mt-8 flex justify-center gap-6 text-[11px] font-bold text-slate-400 border-t border-slate-50 pt-6">
             <span class="flex items-center gap-2"><i class="dot bg-winga"></i> WingA</span>
             <span class="flex items-center gap-2"><i class="dot bg-wingc"></i> WingC</span>
         </div>
@@ -44,36 +48,49 @@
         async function init() {
             try {
                 const res = await fetch(GAS_URL);
-                allData = await res.json();
+                const data = await res.json();
+                allData = data;
                 render();
-            } catch (e) { document.getElementById('monthDisplay').innerText = "載入失敗"; }
+            } catch (e) { 
+                document.getElementById('monthDisplay').innerText = "載入失敗"; 
+            }
         }
 
         function render() {
             const grid = document.getElementById('calendarGrid');
             const year = currentViewDate.getFullYear();
             const month = currentViewDate.getMonth();
+            const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+            
             document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
             grid.innerHTML = '';
 
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
+            // 填充月初空白
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div></div>`;
+            }
 
-            const aDates = allData.WingA.map(item => item.date);
-            const cDates = allData.WingC.map(item => item.date);
+            // 取得 A 和 C 的打卡日期清單
+            const aDates = allData.WingA ? allData.WingA.map(item => item.date) : [];
+            const cDates = allData.WingC ? allData.WingC.map(item => item.date) : [];
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = dateStr === todayStr;
+                
                 let dots = '';
                 if (aDates.includes(dateStr)) dots += `<i class="dot bg-winga"></i>`;
                 if (cDates.includes(dateStr)) dots += `<i class="dot bg-wingc"></i>`;
 
                 grid.innerHTML += `
-                    <div class="h-14 border border-gray-50 rounded-2xl flex flex-col items-center justify-center bg-gray-50/50">
-                        <span class="text-[10px] font-bold text-gray-300 mb-1">${d}</span>
-                        <div class="flex h-2 items-center justify-center">${dots}</div>
+                    <div class="calendar-day-box ${isToday ? 'today-mark' : ''}">
+                        <span class="text-[10px] mb-1 ${isToday ? 'today-text' : 'font-bold text-slate-300'}">${d}</span>
+                        <div class="flex h-2 items-center justify-center gap-0.5">
+                            ${dots}
+                        </div>
                     </div>`;
             }
         }
@@ -82,6 +99,7 @@
             currentViewDate.setMonth(currentViewDate.getMonth() + step);
             render();
         }
+
         init();
     </script>
 </body>
