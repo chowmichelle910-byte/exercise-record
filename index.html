@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運動紀錄 - All</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin: 1px; }
+        .bg-winga { background-color: #F87171; }
+        .bg-wingc { background-color: #60A5FA; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen p-4 flex flex-col items-center">
+    <div class="bg-white shadow-xl rounded-3xl p-6 w-full max-w-md">
+        <nav class="flex justify-around mb-6 p-1 bg-gray-100 rounded-xl">
+            <a href="index.html" class="px-4 py-2 rounded-lg text-sm font-bold bg-white shadow-sm text-indigo-600">All</a>
+            <a href="WingA.html" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-500 hover:text-red-500">WingA</a>
+            <a href="WingC.html" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-500 hover:text-blue-500">WingC</a>
+        </nav>
+        <h2 id="monthDisplay" class="text-center text-xl font-bold text-gray-800 mb-4">載入中...</h2>
+        <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-400 mb-2">
+            <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+        </div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-2"></div>
+        <div class="mt-6 flex justify-center gap-4 text-xs font-medium text-gray-500">
+            <span class="flex items-center gap-1"><i class="dot bg-winga"></i> WingA</span>
+            <span class="flex items-center gap-1"><i class="dot bg-wingc"></i> WingC</span>
+        </div>
+    </div>
+
+    <script>
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycby1QmZXmllQO-JuCs5XWYOn3PIOiNy-mDtsO9Y5cJwyG7f2fnW0QiTnXp_TG14eez0Z/exec';
+        async function fetchData() {
+            const res = await fetch(GAS_URL);
+            const allData = await res.json();
+            renderCalendar(allData);
+        }
+        function renderCalendar(allData) {
+            const grid = document.getElementById('calendarGrid');
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月 (全體)`;
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            grid.innerHTML = '';
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                let dots = '';
+                if (allData.WingA.includes(dateStr)) dots += `<span class="dot bg-winga"></span>`;
+                if (allData.WingC.includes(dateStr)) dots += `<span class="dot bg-wingc"></span>`;
+                grid.innerHTML += `<div class="h-14 border border-gray-50 rounded-lg flex flex-col items-center justify-center bg-gray-50">
+                    <span class="text-xs text-gray-400 mb-1">${d}</span>
+                    <div class="flex h-2">${dots}</div>
+                </div>`;
+            }
+        }
+        fetchData();
+    </script>
+</body>
+</html>
