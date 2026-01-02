@@ -77,23 +77,31 @@
         }
 
         async function checkIn() {
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            const btn = document.getElementById('btn');
-            btn.disabled = true;
-            btn.innerText = '處理中...';
-            
-            await fetch(GAS_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({date: dateStr, sheetName: 'WingC'}), 
-                mode: 'no-cors'
-            });
-            
-            alert('WingC 打卡成功！');
-            window.location.reload();
-        }
+    const btn = document.getElementById('btn');
+    btn.disabled = true;
+    btn.innerText = '正在同步...';
+    
+    try {
+        await fetch(GAS_URL, { 
+            method: 'POST',
+            mode: 'no-cors',
+            body: JSON.stringify({
+                // 不傳日期，讓 GAS 根據時區生成，確保最精準
+                sheetName: 'WingC' 
+            })
+        });
+        
+        alert('打卡成功！');
+        window.location.reload(); 
+    } catch (error) {
+        alert('連線失敗');
+        btn.disabled = false;
+        btn.innerText = '確認今日打卡';
+    }
+}
 
         init();
     </script>
 </body>
 </html>
+
