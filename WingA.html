@@ -59,6 +59,8 @@
         </div>
     </div>
 
+    // ... (前方的 HTML 和 Style 保持不變) ...
+
     <script>
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1QmZXmllQO-JuCs5XWYOn3PIOiNy-mDtsO9Y5cJwyG7f2fnW0QiTnXp_TG14eez0Z/exec';
         let currentViewDate = new Date();
@@ -66,40 +68,53 @@
         let allData = [];
 
         async function init() {
-            const res = await fetch(GAS_URL);
-            const data = await res.json();
-            allData = data.WingA || [];
-            render();
-        }
-
-        function render() {
-            const grid = document.getElementById('calendarGrid');
-            const year = currentViewDate.getFullYear();
-            const month = currentViewDate.getMonth();
-            const todayStr = new Date().toISOString().split('T')[0];
-            
-            document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
-            grid.innerHTML = '';
-
-            for (let i = 0; i < new Date(year, month, 1).getDay(); i++) grid.innerHTML += `<div></div>`;
-
-            const doneDates = allData.map(item => item.date);
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                const isDone = doneDates.includes(dateStr);
-                const isToday = dateStr === todayStr;
-                const isSelected = dateStr === selectedDate;
+            try {
+                const res = await fetch(GAS_URL);
+                const data = await res.json();
                 
-                let classes = isDone ? 'done' : 'bg-gray-50 text-gray-400';
-                if (isToday) classes += ' today-mark';
-                if (isSelected) classes += ' selected-date';
-
-                grid.innerHTML += `<div class="calendar-box ${classes}" onclick="selectDate('${dateStr}')">${d}</div>`;
-            }
-            renderHistory();
+                allData = data.WingC || []; // WingA 請改為 data.WingA
+                
+                // 動態生成選單選項
+                renderOptions(data.options);
+                render();
+            } catch (e) { document.getElementById('monthDisplay').innerText = "載入失敗"; }
         }
+
+        function renderOptions(options) {
+            const durSelect = document.getElementById('duration');
+            const typeSelect = document.getElementById('type');
+            
+            // 清空並加入 Data 分頁的選項
+            durSelect.innerHTML = options.durations.map(d => `<option value="${d}">${d} 分鐘</option>`).join('') + '<option value="自訂">自訂</option>';
+            typeSelect.innerHTML = options.types.map(t => `<option value="${t}">${t}</option>`).join('') + '<option value="自訂">自訂</option>';
+        }
+
+        // ... render(), selectDate(), renderHistory(), changeMonth() 保持不變 ...
+
+        async function checkIn() {
+            let duration = document.getElementById('duration').value;
+            let type = document.getElementById('type').value;
+            if(duration === '自訂') duration = prompt("請輸入分鐘數：");
+            if(type === '自訂') type = prompt("請輸入項目名稱：");
+            if(!duration || !type) return;
+
+            document.getElementById('btn').disabled = true;
+            document.getElementById('btn').innerText = "同步中...";
+            await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    sheetName: 'WingC', // WingA 請改為 WingA
+                    customDate: selectedDate,
+                    duration: duration,
+                    type: type
+                }),
+                mode: 'no-cors'
+            });
+            alert('紀錄成功！');
+            location.reload();
+        }
+        init();
+    </script>
 
         function selectDate(dateStr) {
             selectedDate = dateStr;
@@ -151,3 +166,4 @@
     </script>
 </body>
 </html>
+
