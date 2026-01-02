@@ -6,51 +6,87 @@
     <title>運動紀錄 - WingA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .done { background-color: #F87171 !important; color: white; border: none; }
+        .done { background: #F87171 !important; color: white; font-weight: bold; transform: scale(1.1); box-shadow: 0 4px 6px -1px rgba(248, 113, 113, 0.4); }
+        .calendar-box { min-height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 9999px; font-size: 0.875rem; transition: all 0.2s; }
     </style>
 </head>
 <body class="bg-red-50 min-h-screen p-4 flex flex-col items-center">
-    <div class="bg-white shadow-xl rounded-3xl p-6 w-full max-w-md">
-        <nav class="flex justify-around mb-6 p-1 bg-gray-100 rounded-xl">
-            <a href="index.html" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-500">All</a>
-            <a href="WingA.html" class="px-4 py-2 rounded-lg text-sm font-bold bg-white shadow-sm text-red-500">WingA</a>
-            <a href="WingC.html" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-500">WingC</a>
+    <div class="bg-white shadow-xl rounded-[2rem] p-6 w-full max-w-md">
+        <nav class="flex justify-around mb-6 p-1 bg-gray-100 rounded-xl text-sm font-bold">
+            <a href="index.html" class="px-4 py-2 text-gray-500">All</a>
+            <a href="WingA.html" class="px-4 py-2 bg-white shadow-sm rounded-lg text-red-500">WingA</a>
+            <a href="WingC.html" class="px-4 py-2 text-gray-500">WingC</a>
         </nav>
-        <h2 id="monthDisplay" class="text-center text-xl font-bold text-gray-800 mb-4 tracking-wider">WingA 的進度</h2>
-        <div id="calendarGrid" class="grid grid-cols-7 gap-2 text-center text-xs mb-4">
+
+        <h2 id="monthDisplay" class="text-center text-lg font-black text-gray-800 mb-6">載入中...</h2>
+        
+        <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-400 mb-4">
+            <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
+        </div>
+        
+        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-8">
             </div>
-        <button id="btn" onclick="checkIn()" class="w-full py-4 bg-red-500 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all">
+
+        <button id="btn" onclick="checkIn()" class="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-95">
             確認今日打卡 (WingA)
         </button>
     </div>
+
     <script>
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1QmZXmllQO-JuCs5XWYOn3PIOiNy-mDtsO9Y5cJwyG7f2fnW0QiTnXp_TG14eez0Z/exec';
         let myDates = [];
-        async function load() {
-            const res = await fetch(GAS_URL);
-            const data = await res.json();
-            myDates = data.WingA;
-            render();
-        }
-        function render() {
-            const grid = document.getElementById('calendarGrid');
-            const now = new Date();
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            grid.innerHTML = '';
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                const isDone = myDates.includes(dateStr);
-                grid.innerHTML += `<div class="h-10 w-10 flex items-center justify-center rounded-full ${isDone ? 'done' : 'bg-gray-100'}">${d}</div>`;
+
+        async function init() {
+            renderCalendar([]); // 先渲染空白月曆防止卡住
+            try {
+                const res = await fetch(GAS_URL);
+                const data = await res.json();
+                myDates = data.WingA || [];
+                renderCalendar(myDates);
+            } catch (e) {
+                console.error("資料加載失敗", e);
+                document.getElementById('monthDisplay').innerText = "連線失敗，請重新整理";
             }
         }
+
+        function renderCalendar(doneDates) {
+            const grid = document.getElementById('calendarGrid');
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            grid.innerHTML = '';
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isDone = doneDates.includes(dateStr);
+                grid.innerHTML += `<div class="calendar-box ${isDone ? 'done' : 'bg-gray-50 text-gray-400'}">${d}</div>`;
+            }
+        }
+
         async function checkIn() {
             const dateStr = new Date().toISOString().split('T')[0];
-            document.getElementById('btn').innerText = '處理中...';
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({date: dateStr, sheetName: 'WingA'}), mode: 'no-cors'});
+            const btn = document.getElementById('btn');
+            btn.disabled = true;
+            btn.innerText = '處理中...';
+            
+            await fetch(GAS_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({date: dateStr, sheetName: 'WingA'}), 
+                mode: 'no-cors'
+            });
+            
             alert('WingA 打卡成功！');
-            location.reload();
+            window.location.reload();
         }
-        load();
+
+        init();
     </script>
 </body>
 </html>
