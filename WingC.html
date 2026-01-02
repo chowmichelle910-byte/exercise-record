@@ -7,54 +7,47 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .done { background: #60A5FA !important; color: white !important; font-weight: bold; }
-        .calendar-box { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; border-radius: 14px; cursor: pointer; font-size: 0.875rem; transition: 0.2s; }
+        .calendar-box { min-height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: 0.2s; font-size: 0.875rem; }
         .calendar-box:hover { background: #eff6ff; }
         .selected-date { border: 2px solid #60A5FA; background: #eff6ff; color: #60A5FA; font-weight: bold; }
         .today-mark { color: #60A5FA; font-weight: 900; text-decoration: underline; }
     </style>
 </head>
 <body class="bg-blue-50 min-h-screen p-4 flex flex-col items-center">
-    <div class="bg-white shadow-xl rounded-[2.5rem] p-6 w-full max-w-md">
-        <nav class="flex justify-around mb-8 p-1.5 bg-gray-100 rounded-2xl text-sm font-bold">
+    <div class="bg-white shadow-xl rounded-[2rem] p-6 w-full max-w-md">
+        <nav class="flex justify-around mb-6 p-1 bg-gray-100 rounded-xl text-sm font-bold">
             <a href="index.html" class="px-4 py-2 text-gray-400">All</a>
             <a href="WingA.html" class="px-4 py-2 text-gray-400">WingA</a>
-            <a href="WingC.html" class="px-4 py-2 bg-white shadow-sm rounded-xl text-blue-600">WingC</a>
+            <a href="WingC.html" class="px-4 py-2 bg-white shadow-sm rounded-lg text-blue-500">WingC</a>
         </nav>
 
-        <div class="flex justify-between items-center mb-6 px-4">
-            <button onclick="changeMonth(-1)" class="text-blue-200 hover:text-blue-500 text-xl">❮</button>
-            <h2 id="monthDisplay" class="text-xl font-black text-gray-800"></h2>
-            <button onclick="changeMonth(1)" class="text-blue-200 hover:text-blue-500 text-xl">❯</button>
+        <div class="flex justify-between items-center mb-6 px-2">
+            <button onclick="changeMonth(-1)" class="text-blue-200 p-2 text-xl">❮</button>
+            <h2 id="monthDisplay" class="text-lg font-black text-gray-800"></h2>
+            <button onclick="changeMonth(1)" class="text-blue-200 p-2 text-xl">❯</button>
         </div>
 
-        <div class="grid grid-cols-7 gap-2 text-center text-xs font-black text-gray-300 mb-2">
-            <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+        <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-400 mb-2">
+            <div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div>
         </div>
-        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-8"></div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-6"></div>
 
-        <div class="bg-blue-50/50 p-5 rounded-3xl mb-8 border border-blue-100">
+        <div class="bg-blue-50/50 p-4 rounded-2xl mb-6 border border-blue-100">
             <p class="text-[10px] font-black text-blue-300 mb-3 uppercase tracking-tighter">打卡詳情 (選取：<span id="selectedDateText">今日</span>)</p>
-            <div class="grid grid-cols-2 gap-3 mb-4">
-                <select id="duration" class="p-3 rounded-xl border-none bg-white text-sm shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="10">10 分鐘</option><option value="15">15 分鐘</option>
-                    <option value="20" selected>20 分鐘</option><option value="25">25 分鐘</option>
-                    <option value="30">30 分鐘</option><option value="自訂">自訂</option>
-                </select>
-                <select id="type" class="p-3 rounded-xl border-none bg-white text-sm shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="快行">快行</option><option value="慢行">慢行</option>
-                    <option value="跑步">跑步</option><option value="自訂">自訂</option>
-                </select>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <select id="duration" class="p-2 rounded-lg border bg-white text-sm outline-none focus:ring-2 focus:ring-blue-300"></select>
+                <select id="type" class="p-2 rounded-lg border bg-white text-sm outline-none focus:ring-2 focus:ring-blue-300"></select>
             </div>
-            <button id="btn" onclick="checkIn()" class="w-full py-4 bg-blue-500 text-white font-black rounded-2xl shadow-lg shadow-blue-100 active:scale-95 transition-all">確認打卡</button>
+            <button id="btn" onclick="checkIn()" class="w-full py-3 bg-blue-500 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all">確認打卡</button>
         </div>
 
-        <div class="border-t pt-6">
-            <p class="text-[10px] font-black text-gray-300 mb-4 uppercase tracking-widest text-center">歷史紀錄</p>
-            <div id="historyList" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
+        <div class="border-t pt-4">
+            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">歷史紀錄</p>
+            <div id="historyList" class="space-y-2 max-h-48 overflow-y-auto pr-2"></div>
         </div>
     </div>
 
-        <script>
+    <script>
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1QmZXmllQO-JuCs5XWYOn3PIOiNy-mDtsO9Y5cJwyG7f2fnW0QiTnXp_TG14eez0Z/exec';
         let currentViewDate = new Date();
         let selectedDate = null;
@@ -64,10 +57,7 @@
             try {
                 const res = await fetch(GAS_URL);
                 const data = await res.json();
-                
-                allData = data.WingC || []; // WingA 請改為 data.WingA
-                
-                // 動態生成選單選項
+                allData = data.WingC || [];
                 renderOptions(data.options);
                 render();
             } catch (e) { document.getElementById('monthDisplay').innerText = "載入失敗"; }
@@ -76,38 +66,33 @@
         function renderOptions(options) {
             const durSelect = document.getElementById('duration');
             const typeSelect = document.getElementById('type');
-            
-            // 清空並加入 Data 分頁的選項
             durSelect.innerHTML = options.durations.map(d => `<option value="${d}">${d} 分鐘</option>`).join('') + '<option value="自訂">自訂</option>';
             typeSelect.innerHTML = options.types.map(t => `<option value="${t}">${t}</option>`).join('') + '<option value="自訂">自訂</option>';
         }
 
-        // ... render(), selectDate(), renderHistory(), changeMonth() 保持不變 ...
-
-        async function checkIn() {
-            let duration = document.getElementById('duration').value;
-            let type = document.getElementById('type').value;
-            if(duration === '自訂') duration = prompt("請輸入分鐘數：");
-            if(type === '自訂') type = prompt("請輸入項目名稱：");
-            if(!duration || !type) return;
-
-            document.getElementById('btn').disabled = true;
-            document.getElementById('btn').innerText = "同步中...";
-            await fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    sheetName: 'WingC', // WingA 請改為 WingA
-                    customDate: selectedDate,
-                    duration: duration,
-                    type: type
-                }),
-                mode: 'no-cors'
-            });
-            alert('紀錄成功！');
-            location.reload();
+        function render() {
+            const grid = document.getElementById('calendarGrid');
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth();
+            const todayStr = new Date().toLocaleDateString('en-CA');
+            document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
+            grid.innerHTML = '';
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
+            const doneDates = allData.map(item => item.date);
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isDone = doneDates.includes(dateStr);
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                let classes = isDone ? 'done' : 'bg-gray-50 text-gray-400';
+                if (isToday) classes += ' today-mark';
+                if (isSelected) classes += ' selected-date';
+                grid.innerHTML += `<div class="calendar-box ${classes}" onclick="selectDate('${dateStr}')">${d}</div>`;
+            }
+            renderHistory();
         }
-        init();
-    </script>
 
         function selectDate(dateStr) {
             selectedDate = dateStr;
@@ -119,14 +104,14 @@
             const list = document.getElementById('historyList');
             const sortedData = [...allData].reverse();
             list.innerHTML = sortedData.length ? sortedData.map(item => `
-                <div class="flex justify-between items-center p-3 bg-gray-50 rounded-2xl border-l-4 border-blue-400">
+                <div class="flex justify-between items-center p-3 bg-blue-50/50 rounded-xl border-l-4 border-blue-400 text-sm">
                     <div>
-                        <div class="font-black text-gray-700 text-xs">${item.date}</div>
+                        <div class="font-bold text-gray-700">${item.date}</div>
                         <div class="text-[10px] text-gray-400 font-bold">${item.type}</div>
                     </div>
-                    <div class="text-xs font-black text-blue-500 bg-blue-100/50 px-3 py-1 rounded-full">${item.duration}m</div>
+                    <div class="font-black text-blue-500">${item.duration}m</div>
                 </div>
-            `).join('') : '<p class="text-gray-200 text-center py-4 text-xs font-bold">尚無紀錄</p>';
+            `).join('') : '<p class="text-gray-200 text-center py-4">尚無紀錄</p>';
         }
 
         function changeMonth(step) {
@@ -137,8 +122,8 @@
         async function checkIn() {
             let duration = document.getElementById('duration').value;
             let type = document.getElementById('type').value;
-            if(duration === '自訂') duration = prompt("請輸入分鐘數：");
-            if(type === '自訂') type = prompt("請輸入項目名稱：");
+            if(duration === '自訂') duration = prompt("請輸入分鐘：");
+            if(type === '自訂') type = prompt("請輸入項目：");
             if(!duration || !type) return;
 
             document.getElementById('btn').disabled = true;
@@ -160,4 +145,3 @@
     </script>
 </body>
 </html>
-
