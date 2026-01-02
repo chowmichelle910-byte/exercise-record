@@ -79,7 +79,7 @@
         async function checkIn() {
     const btn = document.getElementById('btn');
     btn.disabled = true;
-    btn.innerText = '正在根據當地時區同步...';
+    btn.innerText = '正在同步...';
     
     try {
         await fetch(GAS_URL, { 
@@ -87,11 +87,11 @@
             mode: 'no-cors',
             body: JSON.stringify({
                 // 不傳日期，讓 GAS 根據時區生成，確保最精準
-                sheetName: 'WingC' // WingA.html 請改為 'WingA'
+                sheetName: 'WingA' 
             })
         });
         
-        alert('打卡成功！已記錄您的當地時間。');
+        alert('打卡成功！');
         window.location.reload(); 
     } catch (error) {
         alert('連線失敗');
@@ -104,4 +104,5 @@
     </script>
 </body>
 </html>
+
 
