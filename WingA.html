@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>運動紀錄</title>
+    <title>運動紀錄 - WingA</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .done { background: #64748b !important; color: white !important; font-weight: bold; }
-        .calendar-box { min-height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+        .calendar-box { min-height: 45px; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; transition: 0.2s; font-size: 0.875rem; }
         .calendar-box:hover { background: #e2e8f0; }
-        .selected-date { border: 2px solid #64748b; background: #f1f5f9; }
+        .selected-date { border: 2px solid #64748b; background: #f1f5f9; color: #64748b; font-weight: bold; }
         .today-mark { color: #64748b; font-weight: 900; text-decoration: underline; }
     </style>
 </head>
@@ -22,9 +22,9 @@
         </nav>
 
         <div class="flex justify-between items-center mb-6 px-2">
-            <button onclick="changeMonth(-1)" class="text-slate-400 p-2">❮</button>
+            <button onclick="changeMonth(-1)" class="text-slate-400 p-2 text-xl">❮</button>
             <h2 id="monthDisplay" class="text-lg font-black text-slate-700"></h2>
-            <button onclick="changeMonth(1)" class="text-slate-400 p-2">❯</button>
+            <button onclick="changeMonth(1)" class="text-slate-400 p-2 text-xl">❯</button>
         </div>
 
         <div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-gray-400 mb-2">
@@ -32,34 +32,20 @@
         </div>
         <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-6"></div>
 
-        <div class="bg-slate-50 p-4 rounded-2xl mb-6">
-            <p class="text-xs font-bold text-slate-400 mb-3">打卡詳情 (選取日期：<span id="selectedDateText">今日</span>)</p>
+        <div class="bg-slate-50 p-4 rounded-2xl mb-6 border border-slate-100">
+            <p class="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-tighter">打卡詳情 (選取：<span id="selectedDateText">今日</span>)</p>
             <div class="grid grid-cols-2 gap-3 mb-3">
-                <select id="duration" class="p-2 rounded-lg border text-sm">
-                    <option value="10">10 分鐘</option>
-                    <option value="15">15 分鐘</option>
-                    <option value="20" selected>20 分鐘</option>
-                    <option value="25">25 分鐘</option>
-                    <option value="30">30 分鐘</option>
-                    <option value="custom">自訂</option>
-                </select>
-                <select id="type" class="p-2 rounded-lg border text-sm">
-                    <option value="快行">快行</option>
-                    <option value="慢行">慢行</option>
-                    <option value="跑步">跑步</option>
-                    <option value="自訂">自訂</option>
-                </select>
+                <select id="duration" class="p-2 rounded-lg border bg-white text-sm outline-none focus:ring-2 focus:ring-slate-300"></select>
+                <select id="type" class="p-2 rounded-lg border bg-white text-sm outline-none focus:ring-2 focus:ring-slate-300"></select>
             </div>
-            <button id="btn" onclick="checkIn()" class="w-full py-3 bg-slate-600 text-white font-bold rounded-xl shadow-lg active:scale-95">確認打卡</button>
+            <button id="btn" onclick="checkIn()" class="w-full py-3 bg-slate-600 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all">確認打卡</button>
         </div>
 
         <div class="border-t pt-4">
-            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest">歷史紀錄</p>
-            <div id="historyList" class="space-y-2 max-h-40 overflow-y-auto pr-2 text-sm"></div>
+            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">歷史紀錄</p>
+            <div id="historyList" class="space-y-2 max-h-48 overflow-y-auto pr-2"></div>
         </div>
     </div>
-
-    // ... (前方的 HTML 和 Style 保持不變) ...
 
     <script>
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1QmZXmllQO-JuCs5XWYOn3PIOiNy-mDtsO9Y5cJwyG7f2fnW0QiTnXp_TG14eez0Z/exec';
@@ -71,10 +57,7 @@
             try {
                 const res = await fetch(GAS_URL);
                 const data = await res.json();
-                
-                allData = data.WingC || []; // WingA 請改為 data.WingA
-                
-                // 動態生成選單選項
+                allData = data.WingA || [];
                 renderOptions(data.options);
                 render();
             } catch (e) { document.getElementById('monthDisplay').innerText = "載入失敗"; }
@@ -83,38 +66,36 @@
         function renderOptions(options) {
             const durSelect = document.getElementById('duration');
             const typeSelect = document.getElementById('type');
-            
-            // 清空並加入 Data 分頁的選項
             durSelect.innerHTML = options.durations.map(d => `<option value="${d}">${d} 分鐘</option>`).join('') + '<option value="自訂">自訂</option>';
             typeSelect.innerHTML = options.types.map(t => `<option value="${t}">${t}</option>`).join('') + '<option value="自訂">自訂</option>';
         }
 
-        // ... render(), selectDate(), renderHistory(), changeMonth() 保持不變 ...
+        function render() {
+            const grid = document.getElementById('calendarGrid');
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth();
+            const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+            document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
+            grid.innerHTML = '';
 
-        async function checkIn() {
-            let duration = document.getElementById('duration').value;
-            let type = document.getElementById('type').value;
-            if(duration === '自訂') duration = prompt("請輸入分鐘數：");
-            if(type === '自訂') type = prompt("請輸入項目名稱：");
-            if(!duration || !type) return;
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
 
-            document.getElementById('btn').disabled = true;
-            document.getElementById('btn').innerText = "同步中...";
-            await fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    sheetName: 'WingC', // WingA 請改為 WingA
-                    customDate: selectedDate,
-                    duration: duration,
-                    type: type
-                }),
-                mode: 'no-cors'
-            });
-            alert('紀錄成功！');
-            location.reload();
+            const doneDates = allData.map(item => item.date);
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isDone = doneDates.includes(dateStr);
+                const isToday = dateStr === todayStr;
+                const isSelected = dateStr === selectedDate;
+                
+                let classes = isDone ? 'done' : 'bg-gray-50 text-gray-400';
+                if (isToday) classes += ' today-mark';
+                if (isSelected) classes += ' selected-date';
+                grid.innerHTML += `<div class="calendar-box ${classes}" onclick="selectDate('${dateStr}')">${d}</div>`;
+            }
+            renderHistory();
         }
-        init();
-    </script>
 
         function selectDate(dateStr) {
             selectedDate = dateStr;
@@ -126,12 +107,12 @@
             const list = document.getElementById('historyList');
             const sortedData = [...allData].reverse();
             list.innerHTML = sortedData.length ? sortedData.map(item => `
-                <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg border-l-4 border-slate-400">
+                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border-l-4 border-slate-400 text-sm">
                     <div>
-                        <span class="font-bold">${item.date}</span>
-                        <span class="text-xs text-gray-500 ml-2">${item.type}</span>
+                        <div class="font-bold text-slate-700">${item.date}</div>
+                        <div class="text-[10px] text-gray-400 font-bold">${item.type}</div>
                     </div>
-                    <span class="text-xs font-black text-slate-600">${item.duration}m</span>
+                    <div class="font-black text-slate-600">${item.duration}m</div>
                 </div>
             `).join('') : '<p class="text-gray-300 text-center py-4">尚無紀錄</p>';
         }
@@ -142,17 +123,19 @@
         }
 
         async function checkIn() {
-            const duration = document.getElementById('duration').value === 'custom' ? prompt("請輸入分鐘：") : document.getElementById('duration').value;
-            const type = document.getElementById('type').value === '自訂' ? prompt("請輸入項目：") : document.getElementById('type').value;
-            
+            let duration = document.getElementById('duration').value;
+            let type = document.getElementById('type').value;
+            if(duration === '自訂') duration = prompt("請輸入分鐘：");
+            if(type === '自訂') type = prompt("請輸入項目：");
             if(!duration || !type) return;
 
             document.getElementById('btn').disabled = true;
+            document.getElementById('btn').innerText = "同步中...";
             await fetch(GAS_URL, {
                 method: 'POST',
                 body: JSON.stringify({
                     sheetName: 'WingA',
-                    customDate: selectedDate, // 如果沒選就是 null，GAS 會自動抓當天
+                    customDate: selectedDate,
                     duration: duration,
                     type: type
                 }),
@@ -161,9 +144,7 @@
             alert('紀錄成功！');
             location.reload();
         }
-
         init();
     </script>
 </body>
 </html>
-
