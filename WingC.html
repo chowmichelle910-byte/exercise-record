@@ -6,50 +6,156 @@
     <title>運動紀錄 - WingC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .done { background-color: #60A5FA !important; color: white; border: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        /* 已完成日期的樣式 */
+        .done { 
+            background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%) !important; 
+            color: white !important; 
+            font-weight: bold; 
+            transform: scale(1.05); 
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+            border: none !important;
+        }
+        .calendar-box { 
+            aspect-ratio: 1 / 1;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 12px; 
+            font-size: 0.875rem; 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .today-border {
+            border: 2px solid #3B82F6;
+            color: #3B82F6;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="bg-blue-50 min-h-screen p-4 flex flex-col items-center">
-    <div class="bg-white shadow-xl rounded-3xl p-6 w-full max-w-md">
-        <nav class="flex justify-around mb-6 p-1 bg-gray-100 rounded-xl">
-            <a href="index.html" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-500">All</a>
-            <a href="WingA.html" class="px-4 py-2 rounded-lg text-sm font-bold text-gray-500">WingA</a>
-            <a href="WingC.html" class="px-4 py-2 rounded-lg text-sm font-bold bg-white shadow-sm text-blue-500">WingC</a>
+
+    <div class="bg-white shadow-2xl rounded-[2.5rem] p-8 w-full max-w-md animate__animated animate__fadeIn">
+        <nav class="flex justify-around mb-8 p-1.5 bg-gray-100 rounded-2xl text-sm font-bold">
+            <a href="index.html" class="px-4 py-2 text-gray-400 hover:text-gray-600 transition-colors">All</a>
+            <a href="WingA.html" class="px-4 py-2 text-gray-400 hover:text-red-500 transition-colors">WingA</a>
+            <a href="WingC.html" class="px-4 py-2 bg-white shadow-sm rounded-xl text-blue-600">WingC</a>
         </nav>
-        <h2 id="monthDisplay" class="text-center text-xl font-bold text-gray-800 mb-4 tracking-wider">WingC 的進度</h2>
-        <div id="calendarGrid" class="grid grid-cols-7 gap-2 text-center text-xs mb-4"></div>
-        <button id="btn" onclick="checkIn()" class="w-full py-4 bg-blue-500 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-all">
-            確認今日打卡 (WingC)
+
+        <div class="text-center mb-6">
+            <h1 class="text-blue-600 font-black text-2xl tracking-tighter mb-1">WingC WORKOUT</h1>
+            <h2 id="monthDisplay" class="text-gray-400 font-bold">2026年 1月</h2>
+        </div>
+        
+        <div class="grid grid-cols-7 gap-2 text-center text-xs font-black text-gray-300 mb-4">
+            <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+        </div>
+        
+        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-8">
+            </div>
+
+        <button id="btn" onclick="checkIn()" class="w-full py-4 bg-blue-500 hover:bg-blue-600 text-white font-black rounded-2xl shadow-lg shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2">
+            <span id="btnText">確認今日打卡 (WingC)</span>
+            <div id="loader" class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
         </button>
+        
+        <p class="text-center text-gray-300 text-[10px] mt-6 tracking-widest uppercase font-bold">Data Sync with Google Sheets</p>
     </div>
+
     <script>
         const GAS_URL = 'https://script.google.com/macros/s/AKfycby1QmZXmllQO-JuCs5XWYOn3PIOiNy-mDtsO9Y5cJwyG7f2fnW0QiTnXp_TG14eez0Z/exec';
         let myDates = [];
-        async function load() {
-            const res = await fetch(GAS_URL);
-            const data = await res.json();
-            myDates = data.WingC;
-            render();
-        }
-        function render() {
-            const grid = document.getElementById('calendarGrid');
-            const now = new Date();
-            const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-            grid.innerHTML = '';
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                const isDone = myDates.includes(dateStr);
-                grid.innerHTML += `<div class="h-10 w-10 flex items-center justify-center rounded-full ${isDone ? 'done' : 'bg-gray-100'}">${d}</div>`;
+
+        // 初始化頁面
+        async function init() {
+            renderCalendar([]); // 先畫出空白月曆避免畫面跳動
+            try {
+                const res = await fetch(GAS_URL);
+                if (!res.ok) throw new Error('Network error');
+                const data = await res.json();
+                myDates = data.WingC || [];
+                renderCalendar(myDates);
+            } catch (e) {
+                console.error("載入失敗:", e);
+                document.getElementById('monthDisplay').innerText = "連線不穩定，嘗試讀取中...";
+                // 3秒後嘗試重新讀取
+                setTimeout(init, 3000);
             }
         }
-        async function checkIn() {
-            const dateStr = new Date().toISOString().split('T')[0];
-            document.getElementById('btn').innerText = '處理中...';
-            await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({date: dateStr, sheetName: 'WingC'}), mode: 'no-cors'});
-            alert('WingC 打卡成功！');
-            location.reload();
+
+        function renderCalendar(doneDates) {
+            const grid = document.getElementById('calendarGrid');
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            const today = now.getDate();
+            
+            document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            grid.innerHTML = '';
+
+            // 填充月初空白
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="h-10"></div>`;
+            }
+
+            // 生成日期
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isDone = doneDates.includes(dateStr);
+                const isToday = d === today;
+                
+                let classes = isDone ? 'done' : 'bg-gray-50 text-gray-400';
+                if (isToday && !isDone) classes += ' today-border';
+
+                grid.innerHTML += `<div class="calendar-box ${classes}">${d}</div>`;
+            }
         }
-        load();
+
+        async function checkIn() {
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            
+            if (myDates.includes(dateStr)) {
+                alert('今天已經完成紀錄囉！');
+                return;
+            }
+
+            const btn = document.getElementById('btn');
+            const btnText = document.getElementById('btnText');
+            const loader = document.getElementById('loader');
+
+            btn.disabled = true;
+            btnText.innerText = '正在上傳數據...';
+            loader.classList.remove('hidden');
+            
+            try {
+                // 使用 POST 提交到 GAS
+                await fetch(GAS_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({date: dateStr, sheetName: 'WingC'}), 
+                    mode: 'no-cors'
+                });
+                
+                // 樂觀更新介面
+                setTimeout(() => {
+                    alert('WingC 打卡成功！');
+                    window.location.reload();
+                }, 1000);
+
+            } catch (error) {
+                alert('上傳失敗，請檢查網路連線');
+                btn.disabled = false;
+                btnText.innerText = '確認今日打卡 (WingC)';
+                loader.classList.add('hidden');
+            }
+        }
+
+        // 啟動程式
+        init();
     </script>
 </body>
 </html>
