@@ -10,11 +10,13 @@
         .bg-ID-WingA { background-color: #64748b; } /* 灰色 */
         .bg-ID-WingC { background-color: #60A5FA; } /* 藍色 */
         .done { color: white !important; font-weight: bold; }
-        /* 動態背景色由 JS 控制 */
         .calendar-box { min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 16px; cursor: pointer; transition: 0.2s; font-size: 0.875rem; background: #f8fafc; }
         .today-mark { border: 2px solid #e2e8f0; background: white; text-decoration: underline; font-weight: 900; }
         .selected-date { outline: 2px solid currentColor; }
         .bar-transition { transition: width 1s ease-in-out; }
+        /* 滾動條美化 */
+        #historyList::-webkit-scrollbar { width: 4px; }
+        #historyList::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
 <body id="bodyBg" class="bg-slate-50 min-h-screen p-4 flex flex-col items-center transition-colors duration-500">
@@ -41,7 +43,7 @@
                     <input type="number" id="duration" value="30" class="w-full text-center text-sm font-bold outline-none" readonly>
                     <button onclick="adjustTime(5)" class="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500">▲</button>
                 </div>
-                <select id="type" class="p-2 rounded-lg border bg-white text-sm outline-none"></select>
+                <select id="type" class="p-2 rounded-lg border bg-white text-sm outline-none focus:ring-2 focus:ring-slate-200"></select>
             </div>
             <button id="btn" onclick="checkIn()" class="w-full py-3 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all">確認打卡</button>
         </div>
@@ -62,13 +64,13 @@
         let currentViewDate = new Date();
         let selectedDate = new Date().toLocaleDateString('en-CA');
         let allData = {};
-        let options = {};
-        let currentMode = 'All'; // 'All' 或 'ID-WingA' ...
+        let options = { types: [] };
+        let currentMode = 'All';
 
         const THEMES = {
-            'All': { bg: 'bg-slate-50', btn: 'bg-slate-800', accent: 'text-slate-800', bar: 'bg-slate-400' },
-            'ID-WingA': { bg: 'bg-slate-100', btn: 'bg-slate-600', accent: 'text-slate-600', bar: 'bg-slate-600' },
-            'ID-WingC': { bg: 'bg-blue-50', btn: 'bg-blue-500', accent: 'text-blue-500', bar: 'bg-blue-500' }
+            'All': { bg: 'bg-slate-50', btn: 'bg-slate-800', accent: 'text-slate-800', bar: 'bg-slate-400', hex: '#1e293b' },
+            'ID-WingA': { bg: 'bg-slate-100', btn: 'bg-slate-600', accent: 'text-slate-600', bar: 'bg-slate-600', hex: '#64748b' },
+            'ID-WingC': { bg: 'bg-blue-50', btn: 'bg-blue-500', accent: 'text-blue-500', bar: 'bg-blue-500', hex: '#60A5FA' }
         };
 
         async function init() {
@@ -88,7 +90,8 @@
             let html = `<button onclick="switchMode('All')" class="px-4 py-2 rounded-xl transition-all ${currentMode==='All'?'bg-white shadow-sm':'text-gray-400'}">All</button>`;
             userKeys.forEach(key => {
                 const displayName = key.replace('ID-', '');
-                html += `<button onclick="switchMode('${key}')" class="px-4 py-2 rounded-xl transition-all ${currentMode===key?'bg-white shadow-sm '+ (THEMES[key]?.accent || ''):'text-gray-400'}">${displayName}</button>`;
+                const activeClass = currentMode === key ? `bg-white shadow-sm ${THEMES[key]?.accent || ''}` : 'text-gray-400';
+                html += `<button onclick="switchMode('${key}')" class="px-4 py-2 rounded-xl transition-all ${activeClass}">${displayName}</button>`;
             });
             nav.innerHTML = html;
         }
@@ -140,14 +143,12 @@
                     const hasDone = allData[currentMode].some(item => item.date === dateStr);
                     if (hasDone) {
                         boxClass += " done";
-                        boxStyle = `background-color: ${getComputedStyle(document.body).getPropertyValue('--accent-color') || (currentMode === 'ID-WingA' ? '#64748b' : '#60A5FA')}`;
+                        boxStyle = `background-color: ${THEMES[currentMode]?.hex || '#64748b'}`;
                     }
                 }
-
                 grid.innerHTML += `<div class="${boxClass}" style="${boxStyle}" onclick="selectDate('${dateStr}')">${content}</div>`;
             }
 
-            // 控制面板顯示
             const isPersonal = currentMode !== 'All';
             document.getElementById('checkInArea').classList.toggle('hidden', !isPersonal);
             document.getElementById('historyArea').classList.toggle('hidden', !isPersonal);
@@ -156,7 +157,8 @@
             if (isPersonal) {
                 const theme = THEMES[currentMode] || THEMES['ID-WingA'];
                 document.getElementById('btn').className = `w-full py-3 ${theme.btn} text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all`;
-                document.getElementById('type').innerHTML = options.types.map(t => `<option value="${t}">${t}</option>`).join('') + '<option value="自訂">自訂</option>';
+                const typeSelect = document.getElementById('type');
+                typeSelect.innerHTML = (options.types || []).map(t => `<option value="${t}">${t}</option>`).join('') + '<option value="自訂">+ 新增項目</option>';
                 renderHistory();
             } else {
                 renderStats(`${year}-${String(month + 1).padStart(2, '0')}`);
@@ -167,7 +169,7 @@
             const statsList = document.getElementById('statsList');
             statsList.innerHTML = '';
             Object.keys(allData).forEach(user => {
-                const total = allData[user].filter(i => i.date.startsWith(monthStr)).reduce((s, i) => s + parseInt(i.duration), 0);
+                const total = allData[user].filter(i => i.date.startsWith(monthStr)).reduce((s, i) => s + parseInt(i.duration || 0), 0);
                 const theme = THEMES[user] || THEMES['ID-WingA'];
                 const percent = Math.min((total / 600) * 100, 100);
                 statsList.innerHTML += `
@@ -185,10 +187,11 @@
 
         function renderHistory() {
             const list = document.getElementById('historyList');
-            const data = [...allData[currentMode]].reverse();
+            const data = [...(allData[currentMode] || [])].reverse();
             const theme = THEMES[currentMode] || THEMES['ID-WingA'];
+            const borderClass = theme.accent.replace('text', 'border');
             list.innerHTML = data.map(item => `
-                <div class="flex justify-between items-center p-3 bg-white rounded-xl border-l-4 ${theme.accent.replace('text','border')} text-sm shadow-sm">
+                <div class="flex justify-between items-center p-3 bg-white rounded-xl border-l-4 ${borderClass} text-sm shadow-sm">
                     <div><div class="font-bold text-slate-700">${item.date}</div><div class="text-[10px] text-gray-400 font-bold">${item.type}</div></div>
                     <div class="font-black ${theme.accent}">${item.duration}m</div>
                 </div>`).join('');
@@ -208,23 +211,35 @@
         async function checkIn() {
             let duration = document.getElementById('duration').value;
             let type = document.getElementById('type').value;
-            if(type === '自訂') type = prompt("請輸入項目：");
-            if(!duration || !type) return;
+            let isNewType = false;
+
+            if (type === '自訂') {
+                const customType = prompt("請輸入新項目名稱：");
+                if (!customType) return;
+                type = customType;
+                isNewType = true;
+            }
+
+            if (!duration || !type) return;
 
             const btn = document.getElementById('btn');
             btn.disabled = true; btn.innerText = "同步中...";
             
-            await fetch(GAS_URL, {
-                method: 'POST',
-                body: JSON.stringify({ sheetName: currentMode, customDate: selectedDate, duration: duration, type: type }),
-                mode: 'no-cors'
-            });
-            alert('紀錄成功！');
-            location.reload();
+            try {
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ sheetName: currentMode, customDate: selectedDate, duration: duration, type: type, isNewType: isNewType }),
+                    mode: 'no-cors'
+                });
+                alert('紀錄成功！');
+                location.reload();
+            } catch (e) {
+                alert('發生錯誤');
+                btn.disabled = false; btn.innerText = "確認打卡";
+            }
         }
 
         init();
     </script>
 </body>
 </html>
-
