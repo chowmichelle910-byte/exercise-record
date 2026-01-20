@@ -37,14 +37,21 @@
 
         <div id="checkInArea" class="hidden p-4 rounded-2xl mb-6 border border-opacity-20 bg-gray-50 border-gray-200">
             <p class="text-[10px] font-black text-gray-400 mb-3 uppercase tracking-tighter">打卡詳情 (選取：<span id="selectedDateText">今日</span>)</p>
+            
             <div class="grid grid-cols-2 gap-3 mb-3">
                 <div class="flex items-center bg-white border rounded-lg overflow-hidden">
                     <button onclick="adjustTime(-5)" class="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500">▼</button>
                     <input type="number" id="duration" value="30" class="w-full text-center text-sm font-bold outline-none" readonly>
                     <button onclick="adjustTime(5)" class="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500">▲</button>
                 </div>
-                <select id="type" class="p-2 rounded-lg border bg-white text-sm outline-none focus:ring-2 focus:ring-slate-200"></select>
+                <select id="type" onchange="toggleCustomInput()" class="p-2 rounded-lg border bg-white text-sm outline-none focus:ring-2 focus:ring-slate-200"></select>
             </div>
+
+            <div id="customTypeWrapper" class="hidden mb-3">
+                <input type="text" id="customTypeInput" placeholder="請輸入新項目名稱..." 
+                       class="w-full p-3 text-sm border-2 rounded-xl outline-none transition-all shadow-sm">
+            </div>
+
             <button id="btn" onclick="checkIn()" class="w-full py-3 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all">確認打卡</button>
         </div>
 
@@ -99,6 +106,9 @@
         function switchMode(mode) {
             currentMode = mode;
             document.getElementById('bodyBg').className = `${THEMES[mode]?.bg || 'bg-slate-50'} min-h-screen p-4 flex flex-col items-center transition-colors duration-500`;
+            // 切換人選時重置自訂輸入框
+            document.getElementById('customTypeWrapper').classList.add('hidden');
+            document.getElementById('customTypeInput').value = '';
             renderNavBar();
             render();
         }
@@ -108,6 +118,21 @@
             let next = parseInt(input.value) + val;
             if (next < 5) next = 5;
             input.value = next;
+        }
+
+        function toggleCustomInput() {
+            const typeSelect = document.getElementById('type');
+            const wrapper = document.getElementById('customTypeWrapper');
+            const input = document.getElementById('customTypeInput');
+            const theme = THEMES[currentMode] || THEMES['ID-WingA'];
+            
+            if (typeSelect.value === '自訂') {
+                wrapper.classList.remove('hidden');
+                input.classList.add(theme.accent.replace('text', 'border')); // 動態邊框色
+                input.focus();
+            } else {
+                wrapper.classList.add('hidden');
+            }
         }
 
         function render() {
@@ -140,7 +165,7 @@
                     });
                     content += `<div class="flex h-2 items-center justify-center gap-0.5">${dots}</div>`;
                 } else {
-                    const hasDone = allData[currentMode].some(item => item.date === dateStr);
+                    const hasDone = (allData[currentMode] || []).some(item => item.date === dateStr);
                     if (hasDone) {
                         boxClass += " done";
                         boxStyle = `background-color: ${THEMES[currentMode]?.hex || '#64748b'}`;
@@ -157,8 +182,10 @@
             if (isPersonal) {
                 const theme = THEMES[currentMode] || THEMES['ID-WingA'];
                 document.getElementById('btn').className = `w-full py-3 ${theme.btn} text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all`;
+                
                 const typeSelect = document.getElementById('type');
                 typeSelect.innerHTML = (options.types || []).map(t => `<option value="${t}">${t}</option>`).join('') + '<option value="自訂">+ 新增項目</option>';
+                
                 renderHistory();
             } else {
                 renderStats(`${year}-${String(month + 1).padStart(2, '0')}`);
@@ -210,17 +237,21 @@
 
         async function checkIn() {
             let duration = document.getElementById('duration').value;
-            let type = document.getElementById('type').value;
+            let typeValue = document.getElementById('type').value;
+            let finalType = typeValue;
             let isNewType = false;
 
-            if (type === '自訂') {
-                const customType = prompt("請輸入新項目名稱：");
-                if (!customType) return;
-                type = customType;
+            if (typeValue === '自訂') {
+                const customInput = document.getElementById('customTypeInput').value.trim();
+                if (!customInput) {
+                    alert("請輸入新項目名稱！");
+                    return;
+                }
+                finalType = customInput;
                 isNewType = true;
             }
 
-            if (!duration || !type) return;
+            if (!duration || !finalType) return;
 
             const btn = document.getElementById('btn');
             btn.disabled = true; btn.innerText = "同步中...";
@@ -228,10 +259,16 @@
             try {
                 await fetch(GAS_URL, {
                     method: 'POST',
-                    body: JSON.stringify({ sheetName: currentMode, customDate: selectedDate, duration: duration, type: type, isNewType: isNewType }),
+                    body: JSON.stringify({ 
+                        sheetName: currentMode, 
+                        customDate: selectedDate, 
+                        duration: duration, 
+                        type: finalType, 
+                        isNewType: isNewType 
+                    }),
                     mode: 'no-cors'
                 });
-                alert('紀錄成功！');
+                alert('紀錄成功！' + (isNewType ? '新項目已加入清單' : ''));
                 location.reload();
             } catch (e) {
                 alert('發生錯誤');
