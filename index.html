@@ -3,141 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>運動紀錄 - All</title>
+    <title>運動紀錄系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin: 1px; }
-        .bg-winga { background-color: #64748b; } 
-        .bg-wingc { background-color: #60A5FA; } 
-        .calendar-day-box { min-height: 55px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8fafc; border: 1px solid #f1f5f9; }
-        .today-mark { border: 2px solid #e2e8f0; background: white; }
-        .today-text { font-weight: 900; color: #1e293b; text-decoration: underline; }
-        /* 進度條動畫 */
+        .dot { height: 6px; width: 6px; border-radius: 50%; display: inline-block; margin: 1px; }
+        .bg-ID-WingA { background-color: #64748b; } /* 灰色 */
+        .bg-ID-WingC { background-color: #60A5FA; } /* 藍色 */
+        .done { color: white !important; font-weight: bold; }
+        /* 動態背景色由 JS 控制 */
+        .calendar-box { min-height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 16px; cursor: pointer; transition: 0.2s; font-size: 0.875rem; background: #f8fafc; }
+        .today-mark { border: 2px solid #e2e8f0; background: white; text-decoration: underline; font-weight: 900; }
+        .selected-date { outline: 2px solid currentColor; }
         .bar-transition { transition: width 1s ease-in-out; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 flex flex-col items-center">
+<body id="bodyBg" class="bg-slate-50 min-h-screen p-4 flex flex-col items-center transition-colors duration-500">
     <div class="bg-white shadow-xl rounded-[2.5rem] p-6 w-full max-w-md">
-        <nav class="flex justify-around mb-8 p-1.5 bg-gray-100 rounded-2xl text-sm font-bold">
-            <a href="index.html" class="px-4 py-2 bg-white shadow-sm rounded-xl text-slate-800">All</a>
-            <a href="WingA.html" class="px-4 py-2 text-gray-400 hover:text-slate-600 transition-all">WingA</a>
-            <a href="WingC.html" class="px-4 py-2 text-gray-400 hover:text-slate-600 transition-all">WingC</a>
-        </nav>
+        <nav id="navBar" class="flex justify-around mb-6 p-1.5 bg-gray-100 rounded-2xl text-sm font-bold overflow-x-auto"></nav>
 
         <div class="flex justify-between items-center mb-6 px-4">
-            <button onclick="changeMonth(-1)" class="text-gray-300 hover:text-slate-500 text-2xl transition-all">❮</button>
+            <button onclick="changeMonth(-1)" class="text-gray-300 hover:text-gray-500 text-2xl">❮</button>
             <h2 id="monthDisplay" class="text-xl font-black text-slate-800 tracking-tight"></h2>
-            <button onclick="changeMonth(1)" class="text-gray-300 hover:text-slate-500 text-2xl transition-all">❯</button>
+            <button onclick="changeMonth(1)" class="text-gray-300 hover:text-gray-500 text-2xl">❯</button>
         </div>
 
-        <div class="grid grid-cols-7 gap-2 text-center text-[10px] font-black text-slate-300 mb-2 tracking-widest">
+        <div id="calendarHeader" class="grid grid-cols-7 gap-2 text-center text-[10px] font-black text-slate-300 mb-2 tracking-widest">
             <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
         </div>
 
-        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-8"></div>
+        <div id="calendarGrid" class="grid grid-cols-7 gap-2 mb-6"></div>
 
-        <div class="border-t border-slate-50 pt-6 space-y-5">
-            <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Monthly Total (Minutes)</p>
-            
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs font-bold text-slate-500 px-1">
-                    <span>WingA</span>
-                    <span id="statA">0 min</span>
+        <div id="checkInArea" class="hidden p-4 rounded-2xl mb-6 border border-opacity-20 bg-gray-50 border-gray-200">
+            <p class="text-[10px] font-black text-gray-400 mb-3 uppercase tracking-tighter">打卡詳情 (選取：<span id="selectedDateText">今日</span>)</p>
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <div class="flex items-center bg-white border rounded-lg overflow-hidden">
+                    <button onclick="adjustTime(-5)" class="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500">▼</button>
+                    <input type="number" id="duration" value="30" class="w-full text-center text-sm font-bold outline-none" readonly>
+                    <button onclick="adjustTime(5)" class="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-500">▲</button>
                 </div>
-                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                    <div id="barA" class="bg-winga h-full bar-transition" style="width: 0%"></div>
-                </div>
+                <select id="type" class="p-2 rounded-lg border bg-white text-sm outline-none"></select>
             </div>
+            <button id="btn" onclick="checkIn()" class="w-full py-3 text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all">確認打卡</button>
+        </div>
 
-            <div class="space-y-1">
-                <div class="flex justify-between text-xs font-bold text-blue-500 px-1">
-                    <span>WingC</span>
-                    <span id="statC">0 min</span>
-                </div>
-                <div class="w-full bg-blue-50 h-3 rounded-full overflow-hidden">
-                    <div id="barC" class="bg-wingc h-full bar-transition" style="width: 0%"></div>
-                </div>
-            </div>
+        <div id="statsArea" class="border-t border-slate-50 pt-6 space-y-5">
+            <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] text-center">Monthly Progress</p>
+            <div id="statsList" class="space-y-4"></div>
+        </div>
+
+        <div id="historyArea" class="hidden border-t pt-4 mt-6">
+            <p class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-widest text-center">歷史紀錄</p>
+            <div id="historyList" class="space-y-2 max-h-48 overflow-y-auto pr-2"></div>
         </div>
     </div>
 
     <script>
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycby1QmZXmllQO-JuCs5XWYOn3PIOiNy-mDtsO9Y5cJwyG7f2fnW0QiTnXp_TG14eez0Z/exec';
+        const GAS_URL = '你的_GAS_部署網址'; 
         let currentViewDate = new Date();
-        let allData = { WingA: [], WingC: [] };
+        let selectedDate = new Date().toLocaleDateString('en-CA');
+        let allData = {};
+        let options = {};
+        let currentMode = 'All'; // 'All' 或 'ID-WingA' ...
+
+        const THEMES = {
+            'All': { bg: 'bg-slate-50', btn: 'bg-slate-800', accent: 'text-slate-800', bar: 'bg-slate-400' },
+            'ID-WingA': { bg: 'bg-slate-100', btn: 'bg-slate-600', accent: 'text-slate-600', bar: 'bg-slate-600' },
+            'ID-WingC': { bg: 'bg-blue-50', btn: 'bg-blue-500', accent: 'text-blue-500', bar: 'bg-blue-500' }
+        };
 
         async function init() {
             try {
                 const res = await fetch(GAS_URL);
-                allData = await res.json();
+                const json = await res.json();
+                allData = json.users;
+                options = json.options;
+                renderNavBar();
                 render();
-            } catch (e) { 
-                document.getElementById('monthDisplay').innerText = "載入失敗"; 
-            }
+            } catch (e) { document.getElementById('monthDisplay').innerText = "載入失敗"; }
+        }
+
+        function renderNavBar() {
+            const nav = document.getElementById('navBar');
+            const userKeys = Object.keys(allData);
+            let html = `<button onclick="switchMode('All')" class="px-4 py-2 rounded-xl transition-all ${currentMode==='All'?'bg-white shadow-sm':'text-gray-400'}">All</button>`;
+            userKeys.forEach(key => {
+                const displayName = key.replace('ID-', '');
+                html += `<button onclick="switchMode('${key}')" class="px-4 py-2 rounded-xl transition-all ${currentMode===key?'bg-white shadow-sm '+ (THEMES[key]?.accent || ''):'text-gray-400'}">${displayName}</button>`;
+            });
+            nav.innerHTML = html;
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('bodyBg').className = `${THEMES[mode]?.bg || 'bg-slate-50'} min-h-screen p-4 flex flex-col items-center transition-colors duration-500`;
+            renderNavBar();
+            render();
+        }
+
+        function adjustTime(val) {
+            const input = document.getElementById('duration');
+            let next = parseInt(input.value) + val;
+            if (next < 5) next = 5;
+            input.value = next;
         }
 
         function render() {
             const grid = document.getElementById('calendarGrid');
             const year = currentViewDate.getFullYear();
             const month = currentViewDate.getMonth();
-            const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`; // 用於過濾月份
             const todayStr = new Date().toLocaleDateString('en-CA');
-            
             document.getElementById('monthDisplay').innerText = `${year}年 ${month + 1}月`;
             grid.innerHTML = '';
 
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-
             for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div></div>`;
-
-            const aDates = allData.WingA ? allData.WingA.map(item => item.date) : [];
-            const cDates = allData.WingC ? allData.WingC.map(item => item.date) : [];
 
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                 const isToday = dateStr === todayStr;
-                let dots = '';
-                if (aDates.includes(dateStr)) dots += `<i class="dot bg-winga"></i>`;
-                if (cDates.includes(dateStr)) dots += `<i class="dot bg-wingc"></i>`;
+                const isSelected = dateStr === selectedDate;
+                
+                let content = `<span class="text-[10px] mb-1 ${isToday ? 'text-slate-800' : 'font-bold text-slate-300'}">${d}</span>`;
+                let boxClass = `calendar-box ${isToday ? 'today-mark' : ''} ${isSelected ? 'selected-date' : ''}`;
+                let boxStyle = "";
 
-                grid.innerHTML += `
-                    <div class="calendar-day-box ${isToday ? 'today-mark' : ''}">
-                        <span class="text-[10px] mb-1 ${isToday ? 'today-text' : 'font-bold text-slate-300'}">${d}</span>
-                        <div class="flex h-2 items-center justify-center gap-0.5">${dots}</div>
-                    </div>`;
+                if (currentMode === 'All') {
+                    let dots = "";
+                    Object.keys(allData).forEach(user => {
+                        if (allData[user].some(item => item.date === dateStr)) {
+                            dots += `<i class="dot bg-${user}"></i>`;
+                        }
+                    });
+                    content += `<div class="flex h-2 items-center justify-center gap-0.5">${dots}</div>`;
+                } else {
+                    const hasDone = allData[currentMode].some(item => item.date === dateStr);
+                    if (hasDone) {
+                        boxClass += " done";
+                        boxStyle = `background-color: ${getComputedStyle(document.body).getPropertyValue('--accent-color') || (currentMode === 'ID-WingA' ? '#64748b' : '#60A5FA')}`;
+                    }
+                }
+
+                grid.innerHTML += `<div class="${boxClass}" style="${boxStyle}" onclick="selectDate('${dateStr}')">${content}</div>`;
             }
 
-            // --- 更新統計 Bar 邏輯 ---
-            updateStats(monthStr);
+            // 控制面板顯示
+            const isPersonal = currentMode !== 'All';
+            document.getElementById('checkInArea').classList.toggle('hidden', !isPersonal);
+            document.getElementById('historyArea').classList.toggle('hidden', !isPersonal);
+            document.getElementById('statsArea').classList.toggle('hidden', isPersonal);
+
+            if (isPersonal) {
+                const theme = THEMES[currentMode] || THEMES['ID-WingA'];
+                document.getElementById('btn').className = `w-full py-3 ${theme.btn} text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all`;
+                document.getElementById('type').innerHTML = options.types.map(t => `<option value="${t}">${t}</option>`).join('') + '<option value="自訂">自訂</option>';
+                renderHistory();
+            } else {
+                renderStats(`${year}-${String(month + 1).padStart(2, '0')}`);
+            }
         }
 
-        function updateStats(monthStr) {
-            // 過濾出本月資料並加總時長
-            const totalA = allData.WingA
-                .filter(item => item.date.startsWith(monthStr))
-                .reduce((sum, item) => sum + parseInt(item.duration || 0), 0);
-            
-            const totalC = allData.WingC
-                .filter(item => item.date.startsWith(monthStr))
-                .reduce((sum, item) => sum + parseInt(item.duration || 0), 0);
+        function renderStats(monthStr) {
+            const statsList = document.getElementById('statsList');
+            statsList.innerHTML = '';
+            Object.keys(allData).forEach(user => {
+                const total = allData[user].filter(i => i.date.startsWith(monthStr)).reduce((s, i) => s + parseInt(i.duration), 0);
+                const theme = THEMES[user] || THEMES['ID-WingA'];
+                const percent = Math.min((total / 600) * 100, 100);
+                statsList.innerHTML += `
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs font-bold ${theme.accent} px-1">
+                            <span>${user.replace('ID-', '')}</span>
+                            <span>${total} min</span>
+                        </div>
+                        <div class="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                            <div class="${theme.bar} h-full bar-transition" style="width: ${percent}%"></div>
+                        </div>
+                    </div>`;
+            });
+        }
 
-            // 更新文字
-            document.getElementById('statA').innerText = `${totalA} min`;
-            document.getElementById('statC').innerText = `${totalC} min`;
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            const data = [...allData[currentMode]].reverse();
+            const theme = THEMES[currentMode] || THEMES['ID-WingA'];
+            list.innerHTML = data.map(item => `
+                <div class="flex justify-between items-center p-3 bg-white rounded-xl border-l-4 ${theme.accent.replace('text','border')} text-sm shadow-sm">
+                    <div><div class="font-bold text-slate-700">${item.date}</div><div class="text-[10px] text-gray-400 font-bold">${item.type}</div></div>
+                    <div class="font-black ${theme.accent}">${item.duration}m</div>
+                </div>`).join('');
+        }
 
-            // 更新 Bar 長度 (假設每月目標為 600 分鐘，可自行調整比例)
-            const goal = 600; 
-            const percentA = Math.min((totalA / goal) * 100, 100);
-            const percentC = Math.min((totalC / goal) * 100, 100);
-
-            document.getElementById('barA').style.width = percentA + '%';
-            document.getElementById('barC').style.width = percentC + '%';
+        function selectDate(dateStr) {
+            selectedDate = dateStr;
+            document.getElementById('selectedDateText').innerText = dateStr;
+            render();
         }
 
         function changeMonth(step) {
             currentViewDate.setMonth(currentViewDate.getMonth() + step);
             render();
+        }
+
+        async function checkIn() {
+            let duration = document.getElementById('duration').value;
+            let type = document.getElementById('type').value;
+            if(type === '自訂') type = prompt("請輸入項目：");
+            if(!duration || !type) return;
+
+            const btn = document.getElementById('btn');
+            btn.disabled = true; btn.innerText = "同步中...";
+            
+            await fetch(GAS_URL, {
+                method: 'POST',
+                body: JSON.stringify({ sheetName: currentMode, customDate: selectedDate, duration: duration, type: type }),
+                mode: 'no-cors'
+            });
+            alert('紀錄成功！');
+            location.reload();
         }
 
         init();
